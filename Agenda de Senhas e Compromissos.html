@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda de Senhas e Compromissos</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #4a7abc;
+            --primary-light: #6b92d1;
+            --secondary-color: #f0f0f0;
+            --text-color: #333;
+            --danger-color: #dc3545;
+            --success-color: #28a745;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 15px 0;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        
+        .container {
+            width: 90%;
+            max-width: 1000px;
+            margin: 20px auto;
+            flex: 1;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            background-color: var(--secondary-color);
+        }
+        
+        .tab-button {
+            padding: 15px 25px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-color);
+            transition: all 0.3s ease;
+        }
+        
+        .tab-button:hover {
+            background-color: #e0e0e0;
+        }
+        
+        .tab-button.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 20px;
+            animation: fadeIn 0.5s;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background-color: var(--primary-light);
+            color: white;
+            font-weight: 500;
+        }
+        
+        tr:hover {
+            background-color: #f9f9f9;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--primary-light);
+        }
+        
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+        
+        .btn-success {
+            background-color: var(--success-color);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background-color: #218838;
+        }
+        
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .modal {
+            background-color: white;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            animation: slideDown 0.3s forwards;
+        }
+        
+        @keyframes slideDown {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .modal-header {
+            padding: 15px 20px;
+            background-color: var(--primary-color);
+            color: white;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .close-button {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .modal-footer {
+            padding: 15px 20px;
+            border-top: 1px solid #ddd;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(74, 122, 188, 0.25);
+        }
+        
+        .login-container {
+            max-width: 400px;
+            margin: 100px auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .login-container h2 {
+            margin-bottom: 25px;
+            text-align: center;
+            color: var(--primary-color);
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .password-container {
+            position: relative;
+        }
+        
+        .password-toggle {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            cursor: pointer;
+        }
+        
+        .filter-container {
+            margin-bottom: 20px;
+        }
+        
+        .filter-input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+            max-width: 300px;
+        }
+        
+        .action-cell {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 14px;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: auto;
+            color: #777;
+            font-size: 14px;
+        }
+
+        .export-import {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .alert {
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            transition: opacity 0.5s ease-out;
+        }
+
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+        
+        @media (max-width: 768px) {
+            .tab-button {
+                padding: 12px 15px;
+                font-size: 14px;
+            }
+            
+            table th, table td {
+                padding: 8px 10px;
+                font-size: 14px;
+            }
+            
+            .button-group {
+                flex-wrap: wrap;
+            }
+            
+            .modal {
+                width: 95%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Área de login -->
+    <div id="login-screen" class="login-container">
+        <h2>Agenda de Senhas e Compromissos</h2>
+        <div id="login-alert" class="alert hidden"></div>
+        <div id="first-access-message" class="hidden">
+            <p>Parece que é seu primeiro acesso. Crie uma senha mestra para proteger suas informações:</p>
+        </div>
+        <div id="regular-access-message">
+            <p>Digite sua senha mestra para acessar:</p>
+        </div>
+        <form id="login-form">
+            <div class="form-group">
+                <label for="master-password">Senha Mestra:</label>
+                <div class="password-container">
+                    <input type="password" id="master-password" required>
+                    <button type="button" class="password-toggle" id="toggle-password">👁️</button>
+                </div>
+            </div>
+            <div id="confirm-password-group" class="form-group hidden">
+                <label for="confirm-password">Confirme a Senha:</label>
+                <div class="password-container">
+                    <input type="password" id="confirm-password">
+                    <button type="button" class="password-toggle" id="toggle-confirm">👁️</button>
+                </div>
+            </div>
+            <button type="submit" class="btn-primary" style="width: 100%;">Entrar</button>
+        </form>
+    </div>
+
+    <!-- Aplicação principal -->
+    <div id="app-container" class="hidden">
+        <header>
+            <h1>Agenda de Senhas e Compromissos</h1>
+        </header>
+        
+        <div class="container">
+            <div class="tabs">
+                <button class="tab-button active" data-tab="compromissos">Compromissos</button>
+                <button class="tab-button" data-tab="senhas">Senhas</button>
+                <button class="tab-button" data-tab="config">Configurações</button>
+            </div>
+            
+            <!-- Aba de Compromissos -->
+            <div id="compromissos" class="tab-content active">
+                <div id="compromissos-alert" class="alert hidden"></div>
+                <div class="button-group">
+                    <button id="add-compromisso" class="btn-primary">Adicionar Compromisso</button>
+                    <button id="delete-compromisso" class="btn-danger">Excluir Selecionado</button>
+                </div>
+                
+                <div class="filter-container">
+                    <input type="text" id="filter-compromissos" class="filter-input" placeholder="Filtrar compromissos...">
+                </div>
+                
+                <div class="table-responsive">
+                    <table id="compromissos-table">
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" id="select-all-compromissos"></th>
+                                <th>Data</th>
+                                <th>Hora</th>
+                                <th>Descrição</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="compromissos-list">
+                            <!-- Os compromissos serão inseridos aqui via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Aba de Senhas -->
+            <div id="senhas" class="tab-content">
+                <div id="senhas-alert" class="alert hidden"></div>
+                <div class="button-group">
+                    <button id="add-senha" class="btn-primary">Adicionar Senha</button>
+                    <button id="delete-senha" class="btn-danger">Excluir Selecionado</button>
+                </div>
+                
+                <div class="filter-container">
+                    <input type="text" id="filter-senhas" class="filter-input" placeholder="Filtrar senhas...">
+                </div>
+                
+                <div class="table-responsive">
+                    <table id="senhas-table">
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" id="select-all-senhas"></th>
+                                <th>Serviço/Site</th>
+                                <th>Usuário</th>
+                                <th>Senha</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="senhas-list">
+                            <!-- As senhas serão inseridas aqui via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Aba de Configurações -->
+            <div id="config" class="tab-content">
+                <h2>Configurações</h2>
+                <div id="config-alert" class="alert hidden"></div>
+                
+                <div class="form-group">
+                    <label for="current-password">Senha Mestra Atual:</label>
+                    <div class="password-container">
+                        <input type="password" id="current-password" placeholder="Digite sua senha atual">
+                        <button type="button" class="password-toggle" id="toggle-current">👁️</button>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="new-password">Nova Senha Mestra:</label>
+                    <div class="password-container">
+                        <input type="password" id="new-password" placeholder="Digite a nova senha">
+                        <button type="button" class="password-toggle" id="toggle-new">👁️</button>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirm-new-password">Confirme a Nova Senha:</label>
+                    <div class="password-container">
+                        <input type="password" id="confirm-new-password" placeholder="Confirme a nova senha">
+                        <button type="button" class="password-toggle" id="toggle-confirm-new">👁️</button>
+                    </div>
+                </div>
+                
+                <button id="save-password" class="btn-primary">Salvar Nova Senha</button>
+                
+                <div class="export-import">
+                    <button id="export-data" class="btn-primary">Exportar Dados</button>
+                    <button id="import-data" class="btn-primary">Importar Dados</button>
+                </div>
+                
+                <div style="margin-top: 20px;">
+                    <button id="logout" class="btn-danger">Sair da Agenda</button>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Agenda de Senhas e Compromissos - Versão 1.0</p>
+        </footer>
+    </div>
+    
+    <!-- Modal para adicionar compromisso -->
+    <div id="compromisso-modal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="compromisso-modal-title">Adicionar Compromisso</h3>
+                <button class="close-button compromisso-modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="compromisso-form">
+                    <input type="hidden" id="compromisso-id">
+                    <div class="form-group">
+                        <label for="compromisso-data">Data:</label>
+                        <input type="date" id="compromisso-data" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="compromisso-hora">Hora:</label>
+                        <input type="time" id="compromisso-hora" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="compromisso-descricao">Descrição:</label>
+                        <textarea id="compromisso-descricao" rows="3" required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-danger compromisso-modal-close">Cancelar</button>
+                <button id="save-compromisso" class="btn-success">Salvar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para adicionar senha -->
+    <div id="senha-modal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="senha-modal-title">Adicionar Senha</h3>
+                <button class="close-button senha-modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="senha-form">
+                    <input type="hidden" id="senha-id">
+                    <div class="form-group">
+                        <label for="senha-servico">Serviço/Site:</label>
+                        <input type="text" id="senha-servico" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="senha-usuario">Usuário:</label>
+                        <input type="text" id="senha-usuario" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="senha-valor">Senha:</label>
+                        <div class="password-container">
+                            <input type="password" id="senha-valor" required>
+                            <button type="button" class="password-toggle" id="toggle-senha-valor">👁️</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-danger senha-modal-close">Cancelar</button>
+                <button id="save-senha" class="btn-success">Salvar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para visualizar senha -->
+    <div id="visualizar-senha-modal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Visualizar Senha</h3>
+                <button class="close-button visualizar-senha-modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Serviço/Site:</label>
+                    <p id="visualizar-servico"></p>
+                </div>
+                <div class="form-group">
+                    <label>Usuário:</label>
+                    <p id="visualizar-usuario"></p>
+                </div>
+                <div class="form-group">
+                    <label>Senha:</label>
+                    <p id="visualizar-senha"></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary visualizar-senha-modal-close">Fechar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para importar dados -->
+    <div id="import-modal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Importar Dados</h3>
+                <button class="close-button import-modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="import-json">Cole o JSON dos dados para importar:</label>
+                    <textarea id="import-json" rows="6"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-danger import-modal-close">Cancelar</button>
+                <button id="confirm-import" class="btn-success">Importar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para exportar dados -->
+    <div id="export-modal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Exportar Dados</h3>
+                <button class="close-button export-modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Copie este texto e salve em um arquivo seguro:</p>
+                <div class="form-group">
+                    <textarea id="export-json" rows="6" readonly></textarea>
+                </div>
+                <button id="copy-export" class="btn-primary">Copiar para Área de Transferência</button>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary export-modal-close">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Verifica suporte a localStorage
+            if (typeof(Storage) === "undefined") {
+                alert('Seu navegador não suporta armazenamento local. Alguns recursos não funcionarão.');
+                return;
+            }
+
+            // Elementos da interface
+            const loginScreen = document.getElementById('login-screen');
+            const appContainer = document.getElementById('app-container');
+            const loginForm = document.getElementById('login-form');
+            const masterPasswordInput = document.getElementById('master-password');
+            const confirmPasswordGroup = document.getElementById('confirm-password-group');
+            const confirmPasswordInput = document.getElementById('confirm-password');
+            const firstAccessMessage = document.getElementById('first-access-message');
+            const regularAccessMessage = document.getElementById('regular-access-message');
+            const loginAlert = document.getElementById('login-alert');
+            const togglePassword = document.getElementById('toggle-password');
+            const toggleConfirm = document.getElementById('toggle-confirm');
+            
+            // Variável para armazenar a senha mestra durante a sessão
+            let currentMasterPassword = '';
+
+            // Verifica se é o primeiro acesso
+            const isFirstAccess = localStorage.getItem('masterPasswordHash') === null;
+
+            // Configura a interface conforme o tipo de acesso
+            if (isFirstAccess) {
+                firstAccessMessage.classList.remove('hidden');
+                regularAccessMessage.classList.add('hidden');
+                confirmPasswordGroup.classList.remove('hidden');
+            } else {
+                firstAccessMessage.classList.add('hidden');
+                regularAccessMessage.classList.remove('hidden');
+                confirmPasswordGroup.classList.add('hidden');
+            }
+
+            // Toggle para mostrar/esconder senha
+            togglePassword.addEventListener('click', function() {
+                const input = masterPasswordInput;
+                input.type = input.type === 'password' ? 'text' : 'password';
+            });
+
+            if (toggleConfirm) {
+                toggleConfirm.addEventListener('click', function() {
+                    const input = confirmPasswordInput;
+                    input.type = input.type === 'password' ? 'text' : 'password';
+                });
+            }
+
+            // Processa o login
+            loginForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const password = masterPasswordInput.value;
+                
+                if (isFirstAccess) {
+                    const confirmPassword = confirmPasswordInput.value;
+                    
+                    if (password !== confirmPassword) {
+                        showAlert(loginAlert, 'As senhas não coincidem!', 'danger');
+                        return;
+                    }
+                    
+                    if (password.length < 8) {
+                        showAlert(loginAlert, 'A senha deve ter pelo menos 8 caracteres!', 'danger');
+                        return;
+                    }
+                    
+                    // Cria hash da senha (usando CryptoJS)
+                    const passwordHash = CryptoJS.SHA256(password).toString();
+                    localStorage.setItem('masterPasswordHash', passwordHash);
+                    
+                    // Inicializa estruturas de dados vazias
+                    localStorage.setItem('compromissos', JSON.stringify([]));
+                    localStorage.setItem('senhas', JSON.stringify([]));
+                    
+                    // Armazena a senha atual para uso na sessão
+                    currentMasterPassword = password;
+                    
+                    // Mostra a aplicação principal
+                    loginScreen.classList.add('hidden');
+                    appContainer.classList.remove('hidden');
+                    initApp(password);
+                } else {
+                    // Verifica a senha
+                    const storedHash = localStorage.getItem('masterPasswordHash');
+                    const inputHash = CryptoJS.SHA256(password).toString();
+                    
+                    if (inputHash === storedHash) {
+                        // Armazena a senha atual para uso na sessão
+                        currentMasterPassword = password;
+                        
+                        loginScreen.classList.add('hidden');
+                        appContainer.classList.remove('hidden');
+                        initApp(password);
+                    } else {
+                        showAlert(loginAlert, 'Senha incorreta!', 'danger');
+                    }
+                }
+            });
+
+            function showAlert(element, message, type) {
+                element.textContent = message;
+                element.classList.remove('hidden', 'alert-success', 'alert-danger', 'alert-warning');
+                element.classList.add(`alert-${type}`);
+                setTimeout(() => element.classList.add('hidden'), 5000);
+            }
+
+            function initApp(password) {
+                // Funções para criptografar/descriptografar dados
+                function encryptData(data) {
+                    return CryptoJS.AES.encrypt(JSON.stringify(data), password).toString();
+                }
+                
+                function decryptData(encryptedData) {
+                    try {
+                        const bytes = CryptoJS.AES.decrypt(encryptedData, password);
+                        return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+                    } catch (e) {
+                        console.error('Erro ao descriptografar:', e);
+                        return null;
+                    }
+                }
+
+                // Elementos da aplicação principal
+                const compromissosTab = document.getElementById('compromissos');
+                const senhasTab = document.getElementById('senhas');
+                const configTab = document.getElementById('config');
+                const tabButtons = document.querySelectorAll('.tab-button');
+                const compromissosList = document.getElementById('compromissos-list');
+                const senhasList = document.getElementById('senhas-list');
+                const addCompromissoBtn = document.getElementById('add-compromisso');
+                const deleteCompromissoBtn = document.getElementById('delete-compromisso');
+                const addSenhaBtn = document.getElementById('add-senha');
+                const deleteSenhaBtn = document.getElementById('delete-senha');
+                const savePasswordBtn = document.getElementById('save-password');
+                const exportDataBtn = document.getElementById('export-data');
+                const importDataBtn = document.getElementById('import-data');
+                const logoutBtn = document.getElementById('logout');
+                const compromissoModal = document.getElementById('compromisso-modal');
+                const senhaModal = document.getElementById('senha-modal');
+                const visualizarSenhaModal = document.getElementById('visualizar-senha-modal');
+                const importModal = document.getElementById('import-modal');
+                const exportModal = document.getElementById('export-modal');
+                const filterCompromissos = document.getElementById('filter-compromissos');
+                const filterSenhas = document.getElementById('filter-senhas');
+                const selectAllCompromissos = document.getElementById('select-all-compromissos');
+                const selectAllSenhas = document.getElementById('select-all-senhas');
+
+                // Carrega os dados do localStorage
+                function loadCompromissos() {
+                    const encrypted = localStorage.getItem('compromissosData');
+                    let compromissos = [];
+                    
+                    if (encrypted) {
+                        compromissos = decryptData(encrypted) || [];
+                    } else {
+                        // Migração de dados antigos (se houver)
+                        const oldData = localStorage.getItem('compromissos');
+                        if (oldData) {
+                            compromissos = JSON.parse(oldData);
+                            localStorage.removeItem('compromissos');
+                            saveCompromissos(compromissos);
+                        }
+                    }
+                    
+                    return compromissos;
+                }
+
+                function loadSenhas() {
+                    const encrypted = localStorage.getItem('senhasData');
+                    let senhas = [];
+                    
+                    if (encrypted) {
+                        senhas = decryptData(encrypted) || [];
+                    } else {
+                        // Migração de dados antigos (se houver)
+                        const oldData = localStorage.getItem('senhas');
+                        if (oldData) {
+                            senhas = JSON.parse(oldData);
+                            localStorage.removeItem('senhas');
+                            saveSenhas(senhas);
+                        }
+                    }
+                    
+                    return senhas;
+                }
+
+                function saveCompromissos(compromissos) {
+                    localStorage.setItem('compromissosData', encryptData(compromissos));
+                }
+
+                function saveSenhas(senhas) {
+                    localStorage.setItem('senhasData', encryptData(senhas));
+                }
+
+                // Sistema de tabs
+                tabButtons.forEach(button => {
+                    button.addEventListener('click', function() {
+                        const tabId = this.getAttribute('data-tab');
+                        
+                        // Remove a classe active de todas as tabs e buttons
+                        tabButtons.forEach(btn => btn.classList.remove('active'));
+                        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+                        
+                        // Adiciona a classe active ao botão e tab selecionados
+                        this.classList.add('active');
+                        document.getElementById(tabId).classList.add('active');
+                    });
+                });
+
+                // Renderiza a lista de compromissos
+                function renderCompromissos(filter = '') {
+                    const compromissos = loadCompromissos();
+                    compromissosList.innerHTML = '';
+                    
+                    const filtered = filter ? 
+                        compromissos.filter(c => 
+                            c.descricao.toLowerCase().includes(filter.toLowerCase()) ||
+                            c.data.includes(filter)
+                        ) : compromissos;
+                    
+                    filtered.forEach((compromisso, index) => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td><input type="checkbox" class="compromisso-check" data-id="${index}"></td>
+                            <td>${formatDate(compromisso.data)}</td>
+                            <td>${compromisso.hora}</td>
+                            <td>${compromisso.descricao}</td>
+                            <td class="action-cell">
+                                <button class="btn-primary btn-small edit-compromisso" data-id="${index}">Editar</button>
+                                <button class="btn-danger btn-small delete-compromisso" data-id="${index}">Excluir</button>
+                            </td>
+                        `;
+                        compromissosList.appendChild(tr);
+                    });
+
+                    // Adiciona event listeners aos botões de edição/exclusão
+                    document.querySelectorAll('.edit-compromisso').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const id = parseInt(this.getAttribute('data-id'));
+                            editCompromisso(id);
+                        });
+                    });
+
+                    document.querySelectorAll('.delete-compromisso').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const id = parseInt(this.getAttribute('data-id'));
+                            deleteCompromisso([id]);
+                        });
+                    });
+                }
+
+                // Renderiza a lista de senhas
+                function renderSenhas(filter = '') {
+                    const senhas = loadSenhas();
+                    senhasList.innerHTML = '';
+                    
+                    const filtered = filter ? 
+                        senhas.filter(s => 
+                            s.servico.toLowerCase().includes(filter.toLowerCase()) ||
+                            s.usuario.toLowerCase().includes(filter.toLowerCase())
+                        ) : senhas;
+                    
+                    filtered.forEach((senha, index) => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td><input type="checkbox" class="senha-check" data-id="${index}"></td>
+                            <td>${senha.servico}</td>
+                            <td>${senha.usuario}</td>
+                            <td>••••••••</td>
+                            <td class="action-cell">
+                                <button class="btn-primary btn-small view-senha" data-id="${index}">Ver</button>
+                                <button class="btn-primary btn-small edit-senha" data-id="${index}">Editar</button>
+                                <button class="btn-danger btn-small delete-senha" data-id="${index}">Excluir</button>
+                            </td>
+                        `;
+                        senhasList.appendChild(tr);
+                    });
+
+                    // Adiciona event listeners aos botões
+                    document.querySelectorAll('.view-senha').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const id = parseInt(this.getAttribute('data-id'));
+                            viewSenha(id);
+                        });
+                    });
+
+                    document.querySelectorAll('.edit-senha').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const id = parseInt(this.getAttribute('data-id'));
+                            editSenha(id);
+                        });
+                    });
+
+                    document.querySelectorAll('.delete-senha').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const id = parseInt(this.getAttribute('data-id'));
+                            deleteSenha([id]);
+                        });
+                    });
+                }
+
+                // Formata a data para exibição
+                function formatDate(dateString) {
+                    const [year, month, day] = dateString.split('-');
+                    return `${day}/${month}/${year}`;
+                }
+
+                // Filtros
+                filterCompromissos.addEventListener('input', function() {
+                    renderCompromissos(this.value);
+                });
+
+                filterSenhas.addEventListener('input', function() {
+                    renderSenhas(this.value);
+                });
+
+                // Selecionar todos os compromissos/senhas
+                selectAllCompromissos.addEventListener('change', function() {
+                    document.querySelectorAll('.compromisso-check').forEach(checkbox => {
+                        checkbox.checked = this.checked;
+                    });
+                });
+
+                selectAllSenhas.addEventListener('change', function() {
+                    document.querySelectorAll('.senha-check').forEach(checkbox => {
+                        checkbox.checked = this.checked;
+                    });
+                });
+
+                // Modal de compromisso
+                addCompromissoBtn.addEventListener('click', function() {
+                    document.getElementById('compromisso-modal-title').textContent = 'Adicionar Compromisso';
+                    document.getElementById('compromisso-id').value = '';
+                    document.getElementById('compromisso-form').reset();
+                    compromissoModal.classList.remove('hidden');
+                });
+
+                // Modal de senha
+                addSenhaBtn.addEventListener('click', function() {
+                    document.getElementById('senha-modal-title').textContent = 'Adicionar Senha';
+                    document.getElementById('senha-id').value = '';
+                    document.getElementById('senha-form').reset();
+                    senhaModal.classList.remove('hidden');
+                });
+
+                // Fechar modais
+                document.querySelectorAll('.compromisso-modal-close').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        compromissoModal.classList.add('hidden');
+                    });
+                });
+
+                document.querySelectorAll('.senha-modal-close').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        senhaModal.classList.add('hidden');
+                    });
+                });
+
+                document.querySelectorAll('.visualizar-senha-modal-close').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        visualizarSenhaModal.classList.add('hidden');
+                    });
+                });
+
+                document.querySelectorAll('.import-modal-close').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        importModal.classList.add('hidden');
+                    });
+                });
+
+                document.querySelectorAll('.export-modal-close').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        exportModal.classList.add('hidden');
+                    });
+                });
+
+                // Editar compromisso
+                function editCompromisso(id) {
+                    const compromissos = loadCompromissos();
+                    const compromisso = compromissos[id];
+                    
+                    document.getElementById('compromisso-modal-title').textContent = 'Editar Compromisso';
+                    document.getElementById('compromisso-id').value = id;
+                    document.getElementById('compromisso-data').value = compromisso.data;
+                    document.getElementById('compromisso-hora').value = compromisso.hora;
+                    document.getElementById('compromisso-descricao').value = compromisso.descricao;
+                    
+                    compromissoModal.classList.remove('hidden');
+                }
+
+                // Editar senha
+                function editSenha(id) {
+                    const senhas = loadSenhas();
+                    const senha = senhas[id];
+                    
+                    document.getElementById('senha-modal-title').textContent = 'Editar Senha';
+                    document.getElementById('senha-id').value = id;
+                    document.getElementById('senha-servico').value = senha.servico;
+                    document.getElementById('senha-usuario').value = senha.usuario;
+                    document.getElementById('senha-valor').value = senha.senha;
+                    
+                    senhaModal.classList.remove('hidden');
+                }
+
+                // Visualizar senha
+                function viewSenha(id) {
+                    const senhas = loadSenhas();
+                    const senha = senhas[id];
+                    
+                    document.getElementById('visualizar-servico').textContent = senha.servico;
+                    document.getElementById('visualizar-usuario').textContent = senha.usuario;
+                    document.getElementById('visualizar-senha').textContent = senha.senha;
+                    
+                    visualizarSenhaModal.classList.remove('hidden');
+                }
+
+                // Salvar compromisso
+                document.getElementById('save-compromisso').addEventListener('click', function() {
+                    const id = document.getElementById('compromisso-id').value;
+                    const data = document.getElementById('compromisso-data').value;
+                    const hora = document.getElementById('compromisso-hora').value;
+                    const descricao = document.getElementById('compromisso-descricao').value;
+                    
+                    if (!data || !hora || !descricao) {
+                        alert('Preencha todos os campos!');
+                        return;
+                    }
+                    
+                    const compromissos = loadCompromissos();
+                    const compromisso = { data, hora, descricao };
+                    
+                    if (id === '') {
+                        // Novo compromisso
+                        compromissos.push(compromisso);
+                    } else {
+                        // Editar compromisso existente
+                        compromissos[parseInt(id)] = compromisso;
+                    }
+                    
+                    saveCompromissos(compromissos);
+                    renderCompromissos(filterCompromissos.value);
+                    compromissoModal.classList.add('hidden');
+                });
+
+                // Salvar senha
+                document.getElementById('save-senha').addEventListener('click', function() {
+                    const id = document.getElementById('senha-id').value;
+                    const servico = document.getElementById('senha-servico').value;
+                    const usuario = document.getElementById('senha-usuario').value;
+                    const senhaValor = document.getElementById('senha-valor').value;
+                    
+                    if (!servico || !usuario || !senhaValor) {
+                        alert('Preencha todos os campos!');
+                        return;
+                    }
+                    
+                    const senhas = loadSenhas();
+                    const senha = { servico, usuario, senha: senhaValor };
+                    
+                    if (id === '') {
+                        // Nova senha
+                        senhas.push(senha);
+                    } else {
+                        // Editar senha existente
+                        senhas[parseInt(id)] = senha;
+                    }
+                    
+                    saveSenhas(senhas);
+                    renderSenhas(filterSenhas.value);
+                    senhaModal.classList.add('hidden');
+                });
+
+                // Excluir compromissos selecionados
+                deleteCompromissoBtn.addEventListener('click', function() {
+                    const selected = Array.from(document.querySelectorAll('.compromisso-check:checked'))
+                                        .map(checkbox => parseInt(checkbox.getAttribute('data-id')));
+                    
+                    if (selected.length === 0) {
+                        alert('Selecione pelo menos um compromisso para excluir!');
+                        return;
+                    }
+                    
+                    if (confirm(`Tem certeza que deseja excluir ${selected.length} compromisso(s)?`)) {
+                        deleteCompromisso(selected);
+                    }
+                });
+
+                function deleteCompromisso(ids) {
+                    const compromissos = loadCompromissos();
+                    // Remove em ordem decrescente para não afetar os índices
+                    ids.sort((a, b) => b - a).forEach(id => {
+                        compromissos.splice(id, 1);
+                    });
+                    
+                    saveCompromissos(compromissos);
+                    renderCompromissos(filterCompromissos.value);
+                    selectAllCompromissos.checked = false;
+                }
+
+                // Excluir senhas selecionadas
+                deleteSenhaBtn.addEventListener('click', function() {
+                    const selected = Array.from(document.querySelectorAll('.senha-check:checked'))
+                                        .map(checkbox => parseInt(checkbox.getAttribute('data-id')));
+                    
+                    if (selected.length === 0) {
+                        alert('Selecione pelo menos uma senha para excluir!');
+                        return;
+                    }
+                    
+                    if (confirm(`Tem certeza que deseja excluir ${selected.length} senha(s)?`)) {
+                        deleteSenha(selected);
+                    }
+                });
+
+                function deleteSenha(ids) {
+                    const senhas = loadSenhas();
+                    // Remove em ordem decrescente para não afetar os índices
+                    ids.sort((a, b) => b - a).forEach(id => {
+                        senhas.splice(id, 1);
+                    });
+                    
+                    saveSenhas(senhas);
+                    renderSenhas(filterSenhas.value);
+                    selectAllSenhas.checked = false;
+                }
+
+                // Alterar senha mestra
+                savePasswordBtn.addEventListener('click', function() {
+                    const currentPassword = document.getElementById('current-password').value;
+                    const newPassword = document.getElementById('new-password').value;
+                    const confirmNewPassword = document.getElementById('confirm-new-password').value;
+                    
+                    // Verifica a senha atual
+                    const storedHash = localStorage.getItem('masterPasswordHash');
+                    const inputHash = CryptoJS.SHA256(currentPassword).toString();
+                    
+                    if (inputHash !== storedHash) {
+                        alert('Senha atual incorreta!');
+                        return;
+                    }
+                    
+                    if (newPassword.length < 8) {
+                        alert('A nova senha deve ter pelo menos 8 caracteres!');
+                        return;
+                    }
+                    
+                    if (newPassword !== confirmNewPassword) {
+                        alert('As senhas não coincidem!');
+                        return;
+                    }
+                    
+                    // Recriptografa todos os dados com a nova senha
+                    const compromissos = loadCompromissos();
+                    const senhas = loadSenhas();
+                    
+                    // Atualiza a senha mestra
+                    const newHash = CryptoJS.SHA256(newPassword).toString();
+                    localStorage.setItem('masterPasswordHash', newHash);
+                    currentMasterPassword = newPassword;
+                    
+                    // Salva os dados com a nova senha
+                    saveCompromissos(compromissos);
+                    saveSenhas(senhas);
+                    
+                    alert('Senha alterada com sucesso!');
+                    document.getElementById('current-password').value = '';
+                    document.getElementById('new-password').value = '';
+                    document.getElementById('confirm-new-password').value = '';
+                });
+
+                // Exportar dados
+                exportDataBtn.addEventListener('click', function() {
+                    const data = {
+                        compromissos: loadCompromissos(),
+                        senhas: loadSenhas(),
+                        version: '1.0'
+                    };
+                    
+                    document.getElementById('export-json').value = JSON.stringify(data, null, 2);
+                    exportModal.classList.remove('hidden');
+                });
+
+                // Copiar dados exportados
+                document.getElementById('copy-export').addEventListener('click', function() {
+                    const exportJson = document.getElementById('export-json');
+                    exportJson.select();
+                    document.execCommand('copy');
+                    alert('Dados copiados para a área de transferência!');
+                });
+
+                // Importar dados
+                importDataBtn.addEventListener('click', function() {
+                    document.getElementById('import-json').value = '';
+                    importModal.classList.remove('hidden');
+                });
+
+                document.getElementById('confirm-import').addEventListener('click', function() {
+                    const importJson = document.getElementById('import-json').value;
+                    
+                    try {
+                        const data = JSON.parse(importJson);
+                        
+                        if (!data.compromissos || !data.senhas) {
+                            throw new Error('Formato de dados inválido');
+                        }
+                        
+                        if (confirm('Isso substituirá todos os seus dados atuais. Continuar?')) {
+                            saveCompromissos(data.compromissos);
+                            saveSenhas(data.senhas);
+                            renderCompromissos();
+                            renderSenhas();
+                            importModal.classList.add('hidden');
+                            alert('Dados importados com sucesso!');
+                        }
+                    } catch (e) {
+                        alert('Erro ao importar dados: ' + e.message);
+                    }
+                });
+
+                // Logout
+                logoutBtn.addEventListener('click', function() {
+                    if (confirm('Tem certeza que deseja sair?')) {
+                        currentMasterPassword = '';
+                        appContainer.classList.add('hidden');
+                        loginScreen.classList.remove('hidden');
+                        document.getElementById('login-form').reset();
+                    }
+                });
+
+                // Toggles de senha na aba de configurações
+                document.getElementById('toggle-current').addEventListener('click', function() {
+                    const input = document.getElementById('current-password');
+                    input.type = input.type === 'password' ? 'text' : 'password';
+                });
+
+                document.getElementById('toggle-new').addEventListener('click', function() {
+                    const input = document.getElementById('new-password');
+                    input.type = input.type === 'password' ? 'text' : 'password';
+                });
+
+                document.getElementById('toggle-confirm-new').addEventListener('click', function() {
+                    const input = document.getElementById('confirm-new-password');
+                    input.type = input.type === 'password' ? 'text' : 'password';
+                });
+
+                // Toggle de senha no modal de senha
+                document.getElementById('toggle-senha-valor').addEventListener('click', function() {
+                    const input = document.getElementById('senha-valor');
+                    input.type = input.type === 'password' ? 'text' : 'password';
+                });
+
+                // Inicializa a aplicação
+                renderCompromissos();
+                renderSenhas();
+            }
+        });
+    </script>
+</body>
+</html>
